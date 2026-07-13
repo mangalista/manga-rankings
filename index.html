@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rang liste mangi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#f1ece0;
+    --ink:#141210;
+    --ink-soft:#3a3530;
+    --red:#c8202f;
+    --red-dark:#8f1420;
+    --gold:#b9963f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    background-image: radial-gradient(circle, rgba(241,236,224,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 20px 20px;}
+
+  .hero{
+    position:relative;
+    border:3px solid var(--paper);
+    padding:28px 24px 24px;
+    margin-bottom:22px;
+    background: repeating-linear-gradient(135deg, rgba(200,32,47,0.06) 0 2px, transparent 2px 14px);
+    overflow:hidden;
+  }
+  .eyebrow{font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--red); font-weight:700; margin-bottom:6px;}
+  h1{font-family:'Bebas Neue',sans-serif; font-size:clamp(36px,7vw,60px); letter-spacing:.03em; margin:0 0 4px; line-height:.95;}
+  .sub{color:#cfc6b3; font-size:14px; max-width:560px;}
+  .stamp{
+    position:absolute; top:22px; right:24px; width:70px; height:70px; border-radius:50%;
+    border:3px solid var(--red); display:flex; align-items:center; justify-content:center;
+    transform: rotate(-14deg); font-family:'Bebas Neue',sans-serif; color:var(--red);
+    font-size:12px; text-align:center; line-height:1.05; letter-spacing:.05em;
+  }
+  .sync-badge{
+    position:absolute; bottom:14px; right:24px; font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; padding:4px 9px; border-radius:20px; border:1px solid rgba(241,236,224,0.3);
+    color:#cfc6b3;
+  }
+  .sync-badge.on{border-color:#4caf6d; color:#8fd7a5;}
+  .sync-badge.off{border-color:rgba(241,236,224,0.25);}
+  .user-badge{
+    position:absolute; bottom:14px; left:24px; display:none; align-items:center; gap:10px;
+    font-size:11px; color:#cfc6b3;
+  }
+  .user-badge button{
+    background:none; border:1px solid rgba(241,236,224,0.3); color:var(--paper);
+    border-radius:2px; padding:4px 9px; font-size:10px; cursor:pointer; letter-spacing:.02em;
+  }
+  .user-badge button:hover{border-color:var(--red); color:var(--red);}
+  .auth-error{color:#ff8a80; font-size:12px; min-height:16px; margin-top:2px;}
+  .auth-modal .eyebrow{margin-bottom:2px;}
+
+  .stats-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
+  .stat{background:rgba(241,236,224,0.06); border:1px solid rgba(241,236,224,0.18); padding:8px 14px; border-radius:2px; font-size:12px; color:#d8d0be;}
+  .stat b{color:var(--paper); font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:.02em; margin-right:4px;}
+
+  /* LAYOUT: sidebar + main */
+  .layout{display:grid; grid-template-columns:220px 1fr; gap:20px; align-items:start;}
+  @media(max-width:800px){ .layout{grid-template-columns:1fr;} }
+
+  .sidebar{
+    background:rgba(241,236,224,0.05); border:1px solid rgba(241,236,224,0.15);
+    padding:16px; border-radius:2px;
+  }
+  .sidebar-title{font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; margin-bottom:10px;}
+  .sidebar input[type=text]{width:100%; margin-bottom:10px; font-size:13px; padding:9px 11px;}
+  .user-list{display:flex; flex-direction:column; gap:4px; max-height:360px; overflow-y:auto;}
+  .user-item{
+    padding:8px 10px; border-radius:2px; cursor:pointer; font-size:13px;
+    color:var(--paper); display:flex; align-items:center; justify-content:space-between; gap:6px;
+    border:1px solid transparent;
+  }
+  .user-item:hover{background:rgba(241,236,224,0.08); border-color:rgba(241,236,224,0.2);}
+  .user-item.active{background:var(--red); color:#fff;}
+  .user-item .count{font-size:10px; color:#9a927e;}
+  .user-item.active .count{color:rgba(255,255,255,0.75);}
+  .user-empty{font-size:12px; color:#9a927e; padding:8px 2px;}
+
+  .viewing-banner{
+    background:rgba(200,32,47,0.14); border:1px solid rgba(200,32,47,0.45);
+    padding:11px 16px; border-radius:2px; margin-bottom:16px; font-size:13px;
+    display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  .viewing-banner.show{display:flex;}
+  .viewing-banner b{color:#fff;}
+  .viewing-banner button{
+    background:none; border:1px solid rgba(241,236,224,0.4); color:var(--paper);
+    padding:6px 12px; border-radius:2px; cursor:pointer; font-size:12px; font-weight:700;
+  }
+  .viewing-banner button:hover{border-color:var(--paper);}
+
+  /* LIST TABS */
+  .tabs-row{display:flex; align-items:center; gap:8px; margin-bottom:18px;}
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; flex:1;}
+  .tab{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:13px; white-space:nowrap;
+    padding:9px 14px; border-radius:20px; border:1px solid rgba(241,236,224,0.25);
+    background:transparent; color:#cfc6b3; cursor:pointer; flex-shrink:0;
+  }
+  .tab:hover{border-color:var(--paper); color:var(--paper);}
+  .tab.active{background:var(--red); border-color:var(--red); color:#fff;}
+  .tab-add{
+    flex-shrink:0; font-size:16px; font-weight:800; padding:9px 14px; border-radius:20px;
+    border:1px dashed rgba(241,236,224,0.35); background:transparent; color:var(--paper); cursor:pointer;
+  }
+  .tab-add:hover{border-color:var(--red); color:var(--red);}
+  .list-tools{display:flex; gap:4px;}
+  .list-tools button{
+    background:none; border:1px solid rgba(241,236,224,0.25); color:#cfc6b3; border-radius:2px;
+    width:34px; height:34px; cursor:pointer; font-size:14px;
+  }
+  .list-tools button:hover{color:var(--paper); border-color:var(--paper);}
+
+  /* read-only mode: hide anything that mutates data */
+  #appWrap.read-only-mode #addListBtn,
+  #appWrap.read-only-mode .list-tools,
+  #appWrap.read-only-mode #addBtn,
+  #appWrap.read-only-mode .icon-btn[data-edit],
+  #appWrap.read-only-mode .icon-btn[data-del]{ display:none !important; }
+  #appWrap.read-only-mode .card{ cursor:default; }
+  #appWrap.read-only-mode .chapter-input,
+  #appWrap.read-only-mode .status-select{ opacity:.65; }
+
+  /* CONTROLS */
+  .controls{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;}
+  input, select, textarea{font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); border:none; border-radius:2px; padding:11px 13px; font-size:14px;}
+  input::placeholder{color:#8a8371;}
+  .controls input[type=text]{flex:1; min-width:180px;}
+  .controls select{min-width:150px;}
+  .btn{font-family:'Inter',sans-serif; font-weight:700; background:var(--red); color:#fff; border:none; border-radius:2px; padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:background .15s ease, transform .1s ease;}
+  .btn:hover{background:var(--red-dark);}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:transparent; border:1px solid rgba(241,236,224,0.3); color:var(--paper);}
+  .btn.ghost:hover{border-color:var(--paper); background:rgba(241,236,224,0.08);}
+  .btn.dark{background:var(--ink); color:var(--paper);}
+  .btn.dark:hover{background:#2a2620;}
+  .drag-hint{font-size:12px; color:#9a927e; margin:-12px 0 16px; display:none;}
+  .drag-hint.show{display:block;}
+
+  /* LIST */
+  .manga-list{display:flex; flex-direction:column; gap:10px;}
+  .card{background:var(--paper); color:var(--ink); border-radius:2px; padding:14px 16px; display:grid; grid-template-columns:52px 1fr auto; gap:14px; align-items:center; border-left:5px solid var(--gold); cursor:grab;}
+  .card.dragging{opacity:.4;}
+  .card[data-status="Čitam"]{border-left-color:var(--red);}
+  .card[data-status="Završeno"]{border-left-color:#3f7d4f;}
+  .card[data-status="Pauzirano"]{border-left-color:var(--gold);}
+  .card[data-status="Planiram"]{border-left-color:#5a6b8c;}
+  .card[data-status="Odustao"]{border-left-color:#8a8371;}
+  .rank{font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--ink); text-align:center;}
+  .rank span{display:block; font-size:9px; font-family:'Inter',sans-serif; color:#8a8371; letter-spacing:.1em;}
+  .info .title-row{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .title{font-weight:800; font-size:16px;}
+  .genre-tag{font-size:10px; text-transform:uppercase; letter-spacing:.08em; background:rgba(20,18,16,0.08); padding:2px 7px; border-radius:2px; color:var(--ink-soft);}
+  .note{font-size:12px; color:#6b6455; margin-top:3px; font-style:italic;}
+  .right{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+  .chapter-input{width:76px; text-align:center;}
+  .chapter-of{font-size:12px; color:#8a8371;}
+  .status-select{font-size:12px; padding:8px 10px;}
+  .icon-btn{background:none; border:none; cursor:pointer; font-size:15px; color:#8a8371; padding:4px 6px; border-radius:2px;}
+  .icon-btn:hover{color:var(--red); background:rgba(200,32,47,0.08);}
+  .empty{text-align:center; padding:50px 20px; color:#9a927e; border:1px dashed rgba(241,236,224,0.25);}
+  .empty b{color:var(--paper); display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; margin-bottom:4px;}
+
+  /* MODAL */
+  .overlay{position:fixed; inset:0; background:rgba(10,9,8,0.72); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--paper); color:var(--ink); width:100%; max-width:440px; padding:24px; border-radius:2px; border-top:5px solid var(--red);}
+  .modal h2{font-family:'Bebas Neue',sans-serif; font-size:26px; margin:0 0 14px; letter-spacing:.02em;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#6b6455; margin-bottom:5px; font-weight:600;}
+  .field input, .field select, .field textarea{width:100%;}
+  .field textarea{resize:vertical; min-height:50px; font-family:'Inter',sans-serif;}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:18px;}
+
+  @media(max-width:520px){
+    .card{grid-template-columns:36px 1fr; grid-template-areas:"rank info" "right right";}
+    .rank{grid-area:rank; font-size:20px;}
+    .info{grid-area:info;}
+    .right{grid-area:right; justify-content:flex-start; margin-top:8px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay show" id="authScreen">
+  <div class="modal auth-modal">
+    <div class="eyebrow">Rang liste mangi</div>
+    <h2 id="authTitle">Prijavi se</h2>
+    <div class="field" id="authUsernameField" style="display:none;">
+      <label>Korisničko ime</label><input type="text" id="authUsername" autocomplete="username" placeholder="vidljivo drugima">
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="authEmail" autocomplete="email"></div>
+    <div class="field"><label>Lozinka</label><input type="password" id="authPassword" autocomplete="current-password"></div>
+    <div class="auth-error" id="authError"></div>
+    <div class="modal-actions" style="justify-content:space-between; align-items:center;">
+      <button class="btn ghost" id="authToggleBtn" type="button">Nemaš nalog? Registruj se</button>
+      <button class="btn dark" id="authSubmitBtn" type="button">Prijavi se</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap" style="display:none;">
+
+  <div class="hero">
+    <div class="stamp">TOP<br>RANK</div>
+    <div class="eyebrow">Lična kolekcija</div>
+    <h1>Rang liste mangi</h1>
+    <div class="sub">Napravi koliko god rang lista želiš, i pogledaj liste drugara sa leve strane — njihove možeš samo da gledaš.</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="sync-badge off" id="syncBadge">Lokalno čuvanje</div>
+    <div class="user-badge" id="userBadge">
+      <span id="userEmail"></span>
+      <button id="logoutBtn" type="button">Odjavi se</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">Korisnici</div>
+      <input type="text" id="userSearch" placeholder="Pretraži korisnika...">
+      <div class="user-list" id="userList"></div>
+    </aside>
+
+    <div class="main-col">
+      <div class="viewing-banner" id="viewingBanner">
+        <span>Gledaš rang liste korisnika <b id="viewingName"></b> — samo za čitanje</span>
+        <button id="backToMineBtn" type="button">← Nazad na moje liste</button>
+      </div>
+
+      <div class="tabs-row">
+        <div class="tabs" id="tabsRow"></div>
+        <button class="tab-add" id="addListBtn" title="Nova rang lista">+</button>
+        <div class="list-tools">
+          <button id="renameListBtn" title="Preimenuj listu">✎</button>
+          <button id="deleteListBtn" title="Obriši listu">✕</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input type="text" id="searchInput" placeholder="Pretraži naslov...">
+        <select id="genreFilter"><option value="">Svi žanrovi</option></select>
+        <select id="statusFilter">
+          <option value="">Svi statusi</option>
+          <option>Čitam</option>
+          <option>Pauzirano</option>
+          <option>Završeno</option>
+          <option>Planiram</option>
+          <option>Odustao</option>
+        </select>
+        <button class="btn" id="addBtn">+ Dodaj mangu</button>
+      </div>
+      <div class="drag-hint" id="dragHint">Prevlačenje redosleda je onemogućeno dok je aktivan filter ili pretraga — ukloni ih da promeniš rang.</div>
+
+      <div class="manga-list" id="mangaList"></div>
+      <div class="empty" id="emptyState" style="display:none;">
+        <b>Lista je prazna</b>
+        Dodaj svoju prvu mangu u ovu rang listu.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Dodaj mangu</h2>
+    <div class="field"><label>Naziv</label><input type="text" id="fTitle"></div>
+    <div class="two-col">
+      <div class="field"><label>Žanr</label><input type="text" id="fGenre" placeholder="npr. Seinen"></div>
+      <div class="field"><label>Status</label>
+        <select id="fStatus">
+          <option>Čitam</option><option>Pauzirano</option><option>Završeno</option><option>Planiram</option><option>Odustao</option>
+        </select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Poslednji chapter</label><input type="number" id="fChapter" value="0"></div>
+      <div class="field"><label>Ukupno (opciono)</label><input type="number" id="fTotal" placeholder="—"></div>
+    </div>
+    <div class="field"><label>Beleška</label><textarea id="fNote" placeholder="npr. Čekam prevod..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="cancelBtn">Otkaži</button>
+      <button class="btn dark" id="saveBtn">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ============================================================
+   FIREBASE (modularni Web SDK, v10) — učitan direktno preko
+   ES import-a sa gstatic CDN-a, bez potrebe za npm/webpack.
+   Popuni firebaseConfig ispod svojim podacima iz Firebase
+   konzole (Project settings > General > Your apps > SDK setup).
+   Ako ostaviš apiKey prazan, sajt automatski koristi lokalno
+   čuvanje umesto Firebase-a (bez naloga i bez drugih korisnika).
+   ============================================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCBFXXybyJ-HAUitVK3aKvKDnY98pMIKT4",
+  authDomain: "manga-f9fc1.firebaseapp.com",
+  projectId: "manga-f9fc1",
+  storageBucket: "manga-f9fc1.firebasestorage.app",
+  messagingSenderId: "616131911376",
+  appId: "1:616131911376:web:9f9c22d450d1a6bd7a88d5",
+  measurementId: "G-MPWLHT2STP"
+};
+
+const USE_FIREBASE = !!firebaseConfig.apiKey;
+let db = null, fbApp = null, fbAuth = null, fbUid = null;
+
+const STORAGE_KEY = 'manga-rankings-v2';
+
+/* ownState = moje liste (uvek editabilne, žive preko onSnapshot)
+   viewedState = tuđe liste koje trenutno gledam (read-only, žive preko onSnapshot)
+   viewingUid = null znači "gledam svoje liste" */
+let ownState = null;
+let viewedState = null;
+let viewingUid = null;
+let viewingActiveListId = null;
+let dragSrcIndex = null;
+let editingId = null;
+let authMode = 'login';
+let allUsers = []; // [{uid, username}] iz javnog 'usernames' direktorijuma
+let userSearchTerm = '';
+
+let unsubOwnSnapshot = null;
+let unsubViewSnapshot = null;
+let unsubUserDirectory = null;
+
+function uid(){ return 'x' + Date.now() + Math.random().toString(36).slice(2,7); }
+
+function defaultState(){
+  const listId = uid();
+  return {
+    lists: [{
+      id: listId,
+      name: 'Top svih vremena',
+      manga: [
+        {id:uid(), title:'Kingdom', genre:'Seinen', status:'Čitam', chapter:846, total:null, note:''},
+        {id:uid(), title:'Berserk', genre:'Seinen', status:'Čitam', chapter:381, total:null, note:''},
+        {id:uid(), title:'Vagabond', genre:'Seinen', status:'Završeno', chapter:327, total:327, note:''},
+      ]
+    }],
+    activeListId: listId
+  };
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+
+/* ---------- STATE HELPERS (svesni read-only režima) ---------- */
+
+function isReadOnly(){ return !!viewingUid; }
+function activeState(){ return viewingUid ? viewedState : ownState; }
+
+function getActiveListId(){
+  const s = activeState();
+  if(!s || !s.lists.length) return null;
+  if(viewingUid){
+    return (viewingActiveListId && s.lists.some(l=>l.id===viewingActiveListId))
+      ? viewingActiveListId : s.lists[0].id;
+  }
+  return s.activeListId;
+}
+
+function setActiveListId(id){
+  if(viewingUid){
+    viewingActiveListId = id;
+    render();
+  }else{
+    ownState.activeListId = id;
+    saveData();
+    render();
+  }
+}
+
+function activeList(){
+  const s = activeState();
+  if(!s || !s.lists.length) return {id:null, name:'', manga:[]};
+  const id = getActiveListId();
+  return s.lists.find(l=>l.id===id) || s.lists[0];
+}
+
+/* ---------- AUTH SCREEN ---------- */
+
+function showApp(){
+  document.getElementById('authScreen').classList.remove('show');
+  document.getElementById('appWrap').style.display = '';
+}
+function showAuthScreen(){
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('authScreen').classList.add('show');
+}
+
+function authErrorMessage(code){
+  const map = {
+    'auth/email-already-in-use': 'Nalog sa ovim emailom već postoji — probaj da se prijaviš.',
+    'auth/invalid-email': 'Email adresa nije validna.',
+    'auth/weak-password': 'Lozinka mora imati bar 6 karaktera.',
+    'auth/wrong-password': 'Pogrešna lozinka.',
+    'auth/user-not-found': 'Ne postoji nalog sa ovim emailom.',
+    'auth/invalid-credential': 'Pogrešan email ili lozinka.',
+    'auth/too-many-requests': 'Previše pokušaja — probaj ponovo za koji minut.',
+  };
+  return map[code] || ('Greška: ' + code);
+}
+
+function wireAuthScreen(){
+  const toggleBtn = document.getElementById('authToggleBtn');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const title = document.getElementById('authTitle');
+  const errEl = document.getElementById('authError');
+  const usernameField = document.getElementById('authUsernameField');
+
+  toggleBtn.addEventListener('click', ()=>{
+    authMode = authMode === 'login' ? 'register' : 'login';
+    title.textContent = authMode === 'login' ? 'Prijavi se' : 'Napravi nalog';
+    submitBtn.textContent = authMode === 'login' ? 'Prijavi se' : 'Registruj se';
+    toggleBtn.textContent = authMode === 'login' ? 'Nemaš nalog? Registruj se' : 'Već imaš nalog? Prijavi se';
+    usernameField.style.display = authMode === 'register' ? '' : 'none';
+    errEl.textContent = '';
+  });
+
+  async function submit(){
+    const username = document.getElementById('authUsername').value.trim();
+    const email = document.getElementById('authEmail').value.trim();
+    const pass = document.getElementById('authPassword').value;
+    errEl.textContent = '';
+    if(!email || !pass){ errEl.textContent = 'Unesi email i lozinku.'; return; }
+    if(authMode === 'register' && !username){ errEl.textContent = 'Unesi korisničko ime.'; return; }
+
+    submitBtn.disabled = true;
+    try{
+      if(authMode === 'login'){
+        await signInWithEmailAndPassword(fbAuth, email, pass);
+      }else{
+        const q = query(collection(db, 'usernames'), where('username', '==', username));
+        const existing = await getDocs(q);
+        if(!existing.empty){ errEl.textContent = 'Korisničko ime je zauzeto.'; submitBtn.disabled = false; return; }
+        const cred = await createUserWithEmailAndPassword(fbAuth, email, pass);
+        await setDoc(doc(db, 'usernames', cred.user.uid), { uid: cred.user.uid, username });
+      }
+      // onAuthStateChanged hendluje prelazak na app ekran
+    }catch(e){
+      errEl.textContent = authErrorMessage(e.code);
+    }finally{
+      submitBtn.disabled = false;
+    }
+  }
+  submitBtn.addEventListener('click', submit);
+  document.getElementById('authPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+
+  document.getElementById('logoutBtn').addEventListener('click', ()=> signOut(fbAuth));
+}
+
+/* ---------- USER DIRECTORY (javna lista korisnika, samo za čitanje) ---------- */
+
+function wireUserDirectory(){
+  if(unsubUserDirectory) unsubUserDirectory();
+  unsubUserDirectory = onSnapshot(collection(db, 'usernames'), snap=>{
+    allUsers = [];
+    snap.forEach(d => allUsers.push(d.data()));
+    renderUserList();
+  });
+}
+
+function renderUserList(){
+  const listEl = document.getElementById('userList');
+  const term = userSearchTerm;
+  const filtered = allUsers
+    .filter(u => u.uid !== fbUid)
+    .filter(u => !term || (u.username || '').toLowerCase().includes(term))
+    .sort((a,b)=> (a.username||'').localeCompare(b.username||''));
+
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div class="user-empty">${allUsers.length <= 1 ? 'Još nema drugih korisnika.' : 'Nema rezultata.'}</div>`;
+    return;
+  }
+  listEl.innerHTML = filtered.map(u => `
+    <div class="user-item ${viewingUid===u.uid?'active':''}" data-uid="${u.uid}" data-name="${escapeHtml(u.username)}">
+      <span>${escapeHtml(u.username)}</span>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.user-item').forEach(el=>{
+    el.addEventListener('click', ()=> switchToUser(el.dataset.uid, el.dataset.name));
+  });
+}
+
+async function switchToUser(targetUid, username){
+  if(unsubViewSnapshot){ unsubViewSnapshot(); unsubViewSnapshot = null; }
+
+  if(!targetUid){
+    viewingUid = null;
+    viewedState = null;
+    viewingActiveListId = null;
+    document.getElementById('viewingBanner').classList.remove('show');
+    document.getElementById('appWrap').classList.remove('read-only-mode');
+    resetFilters();
+    renderUserList();
+    render();
+    return;
+  }
+
+  viewingUid = targetUid;
+  viewingActiveListId = null;
+  document.getElementById('viewingName').textContent = username || '';
+  document.getElementById('viewingBanner').classList.add('show');
+  document.getElementById('appWrap').classList.add('read-only-mode');
+  resetFilters();
+  renderUserList();
+
+  const ref = doc(db, 'mangaTrackers', targetUid);
+  unsubViewSnapshot = onSnapshot(ref, snap=>{
+    viewedState = snap.exists() ? snap.data().state : { lists: [], activeListId: null };
+    render();
+  }, err=>{
+    console.error('Ne mogu da učitam listu tog korisnika:', err);
+    viewedState = { lists: [], activeListId: null };
+    render();
+  });
+}
+
+function resetFilters(){
+  document.getElementById('searchInput').value = '';
+  document.getElementById('genreFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+}
+
+/* ---------- STORAGE / BOOTSTRAP ---------- */
+
+async function onUserSignedIn(user){
+  fbUid = user.uid;
+  document.getElementById('userEmail').textContent = user.email || '';
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('syncBadge').textContent = 'Firebase sinhronizacija ✓';
+  document.getElementById('syncBadge').classList.add('on');
+  document.getElementById('syncBadge').classList.remove('off');
+
+  if(unsubOwnSnapshot) unsubOwnSnapshot();
+  const ref = doc(db, 'mangaTrackers', fbUid);
+  try{
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      ownState = snap.data().state;
+    }else{
+      ownState = defaultState();
+      await setDoc(ref, { state: ownState });
+    }
+  }catch(e){
+    console.error('Firebase greška pri učitavanju:', e);
+    ownState = defaultState();
+  }
+  unsubOwnSnapshot = onSnapshot(ref, s=>{
+    if(s.exists() && !viewingUid){
+      ownState = s.data().state;
+      render();
+    }else if(s.exists()){
+      ownState = s.data().state; // ažuriraj u pozadini i kad gledam tuđu listu
+    }
+  });
+
+  wireUserDirectory();
+  showApp();
+  render();
+}
+
+function onUserSignedOut(){
+  fbUid = null;
+  ownState = null;
+  viewedState = null;
+  viewingUid = null;
+  if(unsubOwnSnapshot){ unsubOwnSnapshot(); unsubOwnSnapshot = null; }
+  if(unsubViewSnapshot){ unsubViewSnapshot(); unsubViewSnapshot = null; }
+  if(unsubUserDirectory){ unsubUserDirectory(); unsubUserDirectory = null; }
+  document.getElementById('userBadge').style.display = 'none';
+  document.getElementById('appWrap').classList.remove('read-only-mode');
+  document.getElementById('viewingBanner').classList.remove('show');
+  document.getElementById('syncBadge').textContent = 'Lokalno čuvanje';
+  document.getElementById('syncBadge').classList.remove('on');
+  document.getElementById('syncBadge').classList.add('off');
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  showAuthScreen();
+}
+
+async function start(){
+  if(USE_FIREBASE){
+    fbApp = initializeApp(firebaseConfig);
+    db = getFirestore(fbApp);
+    fbAuth = getAuth(fbApp);
+    wireAuthScreen();
+    onAuthStateChanged(fbAuth, user=>{
+      if(user) onUserSignedIn(user);
+      else onUserSignedOut();
+    });
+  }else{
+    document.getElementById('authScreen').classList.remove('show');
+    document.querySelector('.sidebar').style.display = 'none';
+    document.querySelector('.layout').style.gridTemplateColumns = '1fr';
+    await loadLocal();
+    document.getElementById('appWrap').style.display = '';
+    render();
+  }
+}
+
+async function loadLocal(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    ownState = res ? JSON.parse(res.value) : defaultState();
+  }catch(e){
+    ownState = defaultState();
+  }
+}
+
+async function saveData(){
+  if(USE_FIREBASE && db && fbUid){
+    try{
+      await setDoc(doc(db, 'mangaTrackers', fbUid), { state: ownState });
+      return;
+    }catch(e){
+      console.error('Firebase čuvanje nije uspelo, koristim lokalno:', e);
+    }
+  }
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(ownState), false);
+  }catch(e){
+    console.error('Lokalno čuvanje nije uspelo', e);
+  }
+}
+
+/* ---------- FILTERI ---------- */
+
+function currentFilters(){
+  return {
+    q: document.getElementById('searchInput').value.trim().toLowerCase(),
+    genre: document.getElementById('genreFilter').value,
+    status: document.getElementById('statusFilter').value,
+  };
+}
+function filtersActive(f){ return !!(f.q || f.genre || f.status); }
+
+/* ---------- RENDER ---------- */
+
+function renderTabs(){
+  const s = activeState();
+  const row = document.getElementById('tabsRow');
+  if(!s || !s.lists.length){
+    row.innerHTML = '<span style="color:#9a927e; font-size:13px;">Nema rang lista.</span>';
+    document.getElementById('deleteListBtn').style.opacity = '.35';
+    return;
+  }
+  const activeId = getActiveListId();
+  row.innerHTML = s.lists.map(l => `
+    <button class="tab ${l.id===activeId?'active':''}" data-list="${l.id}">${escapeHtml(l.name)}</button>
+  `).join('');
+  row.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=> setActiveListId(btn.dataset.list));
+  });
+  document.getElementById('deleteListBtn').style.opacity = (!viewingUid && s.lists.length > 1) ? '1' : '.35';
+}
+
+function updateGenreOptions(){
+  const sel = document.getElementById('genreFilter');
+  const current = sel.value;
+  const genres = [...new Set(activeList().manga.map(m=>m.genre).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Svi žanrovi</option>' + genres.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+  sel.value = genres.includes(current) ? current : '';
+}
+
+function updateStats(){
+  const row = document.getElementById('statsRow');
+  const list = activeList();
+  const total = list.manga.length;
+  const counts = {};
+  list.manga.forEach(m => counts[m.status] = (counts[m.status]||0)+1);
+  const order = ['Čitam','Pauzirano','Završeno','Planiram','Odustao'];
+  let html = `<div class="stat"><b>${total}</b>u "${escapeHtml(list.name)}"</div>`;
+  order.forEach(s=>{ if(counts[s]) html += `<div class="stat"><b>${counts[s]}</b>${s.toLowerCase()}</div>`; });
+  row.innerHTML = html;
+}
+
+function render(){
+  if(!ownState && !viewedState) return;
+  renderTabs();
+  updateGenreOptions();
+  updateStats();
+
+  const list = activeList();
+  const f = currentFilters();
+  const filtersOn = filtersActive(f);
+  const readOnly = isReadOnly();
+  document.getElementById('dragHint').classList.toggle('show', filtersOn && !readOnly);
+
+  let filtered = list.manga.map((m, idx)=>({m, rank: idx+1}));
+  if(f.q) filtered = filtered.filter(x => x.m.title.toLowerCase().includes(f.q));
+  if(f.genre) filtered = filtered.filter(x => x.m.genre === f.genre);
+  if(f.status) filtered = filtered.filter(x => x.m.status === f.status);
+
+  const listEl = document.getElementById('mangaList');
+  const empty = document.getElementById('emptyState');
+  listEl.innerHTML = '';
+
+  if(filtered.length === 0){
+    empty.style.display = 'block';
+    empty.querySelector('b').textContent = list.manga.length === 0 ? 'Lista je prazna' : 'Nema rezultata';
+    return;
+  }
+  empty.style.display = 'none';
+
+  filtered.forEach(({m, rank}) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.status = m.status;
+    card.dataset.id = m.id;
+    card.draggable = !filtersOn && !readOnly;
+    card.innerHTML = `
+      <div class="rank">#${rank}<span>RANK</span></div>
+      <div class="info">
+        <div class="title-row">
+          <span class="title">${escapeHtml(m.title)}</span>
+          ${m.genre ? `<span class="genre-tag">${escapeHtml(m.genre)}</span>` : ''}
+        </div>
+        ${m.note ? `<div class="note">${escapeHtml(m.note)}</div>` : ''}
+      </div>
+      <div class="right">
+        <input class="chapter-input" type="number" value="${m.chapter}" data-id="${m.id}" title="Poslednji chapter" ${readOnly?'disabled':''}>
+        ${m.total ? `<span class="chapter-of">/ ${m.total}</span>` : ''}
+        <select class="status-select" data-id="${m.id}" ${readOnly?'disabled':''}>
+          ${['Čitam','Pauzirano','Završeno','Planiram','Odustao'].map(s=>`<option ${s===m.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <button class="icon-btn" data-edit="${m.id}" title="Izmeni">✎</button>
+        <button class="icon-btn" data-del="${m.id}" title="Obriši">✕</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+
+  if(readOnly) return; // ništa dole ne kači event listenere za izmenu tuđih podataka
+
+  listEl.querySelectorAll('.chapter-input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const item = activeList().manga.find(x=>x.id===e.target.dataset.id);
+      if(item){ item.chapter = parseFloat(e.target.value)||0; saveData(); updateStats(); }
+    });
+  });
+  listEl.querySelectorAll('.status-select').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const item = activeList().manga.find(x=>x.id===e.target.dataset.id);
+      if(item){ item.status = e.target.value; saveData(); render(); }
+    });
+  });
+  listEl.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', e=> openModal(e.target.dataset.edit));
+  });
+  listEl.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = e.target.dataset.del;
+      const item = activeList().manga.find(x=>x.id===id);
+      if(item && confirm(`Obrisati "${item.title}" sa liste?`)){
+        const l = activeList();
+        l.manga = l.manga.filter(x=>x.id!==id);
+        saveData(); render();
+      }
+    });
+  });
+
+  if(!filtersOn){
+    listEl.querySelectorAll('.card').forEach((card, idx)=>{
+      card.addEventListener('dragstart', ()=>{ dragSrcIndex = idx; card.classList.add('dragging'); });
+      card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); });
+      card.addEventListener('dragover', e=> e.preventDefault());
+      card.addEventListener('drop', e=>{
+        e.preventDefault();
+        if(dragSrcIndex === null || dragSrcIndex === idx) return;
+        const l = activeList();
+        const moved = l.manga.splice(dragSrcIndex, 1)[0];
+        l.manga.splice(idx, 0, moved);
+        dragSrcIndex = null;
+        saveData(); render();
+      });
+    });
+  }
+}
+
+/* ---------- LIST MANAGEMENT (samo za sopstvene liste) ---------- */
+
+document.getElementById('addListBtn').addEventListener('click', ()=>{
+  if(isReadOnly()) return;
+  const name = prompt('Naziv nove rang liste (npr. "Top Romance"):');
+  if(!name || !name.trim()) return;
+  const newList = { id: uid(), name: name.trim(), manga: [] };
+  ownState.lists.push(newList);
+  ownState.activeListId = newList.id;
+  saveData(); render();
+});
+
+document.getElementById('renameListBtn').addEventListener('click', ()=>{
+  if(isReadOnly()) return;
+  const list = activeList();
+  const name = prompt('Novi naziv rang liste:', list.name);
+  if(!name || !name.trim()) return;
+  list.name = name.trim();
+  saveData(); render();
+});
+
+document.getElementById('deleteListBtn').addEventListener('click', ()=>{
+  if(isReadOnly() || ownState.lists.length <= 1) return;
+  const list = activeList();
+  if(!confirm(`Obrisati celu rang listu "${list.name}" i sve mange u njoj?`)) return;
+  ownState.lists = ownState.lists.filter(l=>l.id!==list.id);
+  ownState.activeListId = ownState.lists[0].id;
+  saveData(); render();
+});
+
+document.getElementById('backToMineBtn').addEventListener('click', ()=> switchToUser(null));
+
+document.getElementById('userSearch').addEventListener('input', e=>{
+  userSearchTerm = e.target.value.trim().toLowerCase();
+  renderUserList();
+});
+
+/* ---------- MANGA MODAL ---------- */
+
+function openModal(id){
+  if(isReadOnly()) return;
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = editingId ? 'Izmeni mangu' : 'Dodaj mangu';
+  if(editingId){
+    const m = activeList().manga.find(x=>x.id===editingId);
+    document.getElementById('fTitle').value = m.title;
+    document.getElementById('fGenre').value = m.genre || '';
+    document.getElementById('fStatus').value = m.status;
+    document.getElementById('fChapter').value = m.chapter;
+    document.getElementById('fTotal').value = m.total || '';
+    document.getElementById('fNote').value = m.note || '';
+  }else{
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fGenre').value = '';
+    document.getElementById('fStatus').value = 'Čitam';
+    document.getElementById('fChapter').value = 0;
+    document.getElementById('fTotal').value = '';
+    document.getElementById('fNote').value = '';
+  }
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('fTitle').focus();
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); editingId = null; }
+
+document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(isReadOnly()) return;
+  const title = document.getElementById('fTitle').value.trim();
+  if(!title){ alert('Unesi naziv mange.'); return; }
+  const data = {
+    title,
+    genre: document.getElementById('fGenre').value.trim(),
+    status: document.getElementById('fStatus').value,
+    chapter: parseFloat(document.getElementById('fChapter').value) || 0,
+    total: document.getElementById('fTotal').value ? parseFloat(document.getElementById('fTotal').value) : null,
+    note: document.getElementById('fNote').value.trim(),
+  };
+  const list = activeList();
+  if(editingId){
+    Object.assign(list.manga.find(x=>x.id===editingId), data);
+  }else{
+    list.manga.unshift({id: uid(), ...data});
+  }
+  saveData();
+  closeModal();
+  render();
+});
+
+['searchInput','genreFilter','statusFilter'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', render);
+  document.getElementById(id).addEventListener('change', render);
+});
+
+start();
+</script>
+</body>
+</html>
