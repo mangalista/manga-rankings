@@ -62,18 +62,30 @@
     font-size:12px; color:#cfc6b3;
   }
   .user-badge #userEmail{font-weight:600; color:var(--paper);}
-  .logout-btn{
+  .guest-badge{display:flex; align-items:center; gap:12px; font-size:12px; color:#cfc6b3;}
+  .badge-btn{
     display:inline-flex; align-items:center; gap:6px;
-    background:rgba(200,32,47,0.14); border:1px solid rgba(200,32,47,0.55); color:#ff9d9d;
     border-radius:20px; padding:6px 14px 6px 12px; font-size:11px; font-weight:700;
-    letter-spacing:.04em; text-transform:uppercase; cursor:pointer;
+    letter-spacing:.04em; text-transform:uppercase; cursor:pointer; border:1px solid;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .logout-btn::before{content:"⏻"; font-size:12px; line-height:1;}
-  .logout-btn:hover{background:var(--red); border-color:var(--red); color:#fff;}
-  .logout-btn:active{transform:scale(.96);}
+  .badge-btn:active{transform:scale(.96);}
+  .badge-btn.logout{background:rgba(200,32,47,0.14); border-color:rgba(200,32,47,0.55); color:#ff9d9d;}
+  .badge-btn.logout::before{content:"⏻"; font-size:12px; line-height:1;}
+  .badge-btn.logout:hover{background:var(--red); border-color:var(--red); color:#fff;}
+  .badge-btn.login{background:rgba(90,155,190,0.16); border-color:rgba(90,155,190,0.55); color:#a9d9f5;}
+  .badge-btn.login::before{content:"→"; font-size:12px; line-height:1;}
+  .badge-btn.login:hover{background:#4a8fb5; border-color:#4a8fb5; color:#fff;}
+  .badge-btn.register{background:rgba(76,175,109,0.16); border-color:rgba(76,175,109,0.55); color:#a5e6b8;}
+  .badge-btn.register::before{content:"+"; font-size:13px; line-height:1;}
+  .badge-btn.register:hover{background:#3f7d4f; border-color:#3f7d4f; color:#fff;}
   .auth-error{color:#ff8a80; font-size:12px; min-height:16px; margin-top:2px;}
-  .auth-modal .eyebrow{margin-bottom:2px;}
+  .auth-modal{position:relative;}
+  .modal-close{
+    position:absolute; top:14px; right:14px; background:none; border:none;
+    font-size:16px; color:#8a8371; cursor:pointer; line-height:1; padding:4px;
+  }
+  .modal-close:hover{color:var(--red);}
 
   .stats-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
   .stat{background:rgba(241,236,224,0.06); border:1px solid rgba(241,236,224,0.18); padding:8px 14px; border-radius:2px; font-size:12px; color:#d8d0be;}
@@ -223,8 +235,9 @@
 </head>
 <body>
 
-<div class="overlay show" id="authScreen">
+<div class="overlay" id="authScreen">
   <div class="modal auth-modal">
+    <button class="modal-close" id="authCloseBtn" type="button" aria-label="Zatvori">✕</button>
     <div class="eyebrow">Rang liste mangi</div>
     <h2 id="authTitle">Prijavi se</h2>
     <div class="field" id="authUsernameField" style="display:none;">
@@ -253,7 +266,7 @@
   </div>
 </div>
 
-<div class="wrap" id="appWrap" style="display:none;">
+<div class="wrap" id="appWrap">
 
   <div class="hero">
     <div class="stamp">TOP<br>RANK</div>
@@ -264,7 +277,12 @@
     <div class="hero-footer">
       <div class="user-badge" id="userBadge">
         <span id="userEmail"></span>
-        <button id="logoutBtn" class="logout-btn" type="button">Odjavi se</button>
+        <button id="logoutBtn" class="badge-btn logout" type="button">Odjavi se</button>
+      </div>
+      <div class="guest-badge" id="guestBadge">
+        <span>Gledaš kao gost — bez izmena</span>
+        <button id="guestLoginBtn" class="badge-btn login" type="button">Prijavi se</button>
+        <button id="guestRegisterBtn" class="badge-btn register" type="button">Registruj se</button>
       </div>
       <div class="sync-badge off" id="syncBadge">Lokalno čuvanje</div>
     </div>
@@ -283,34 +301,44 @@
         <button id="backToMineBtn" type="button">← Nazad na moje liste</button>
       </div>
 
-      <div class="tabs-row">
-        <div class="tabs" id="tabsRow"></div>
-        <button class="tab-add" id="addListBtn" title="Nova rang lista">+</button>
-        <div class="list-tools">
-          <button id="renameListBtn" title="Preimenuj listu">✎</button>
-          <button id="deleteListBtn" title="Obriši listu">✕</button>
+      <div class="empty" id="guestPrompt" style="display:none;">
+        <b>👋 Dobrodošao/la</b>
+        Izaberi korisnika sa leve strane da vidiš njegovu rang listu.
+        <div style="margin-top:16px;">
+          <button id="guestPromptRegisterBtn" class="btn" type="button">Napravi svoj nalog i rang liste</button>
         </div>
       </div>
 
-      <div class="controls">
-        <input type="text" id="searchInput" placeholder="Pretraži naslov...">
-        <select id="genreFilter"><option value="">Svi žanrovi</option></select>
-        <select id="statusFilter">
-          <option value="">Svi statusi</option>
-          <option>Čitam</option>
-          <option>Pauzirano</option>
-          <option>Završeno</option>
-          <option>Planiram</option>
-          <option>Odustao</option>
-        </select>
-        <button class="btn" id="addBtn">+ Dodaj mangu</button>
-      </div>
-      <div class="drag-hint" id="dragHint">Prevlačenje redosleda je onemogućeno dok je aktivan filter ili pretraga — ukloni ih da promeniš rang.</div>
+      <div id="listPanel">
+        <div class="tabs-row">
+          <div class="tabs" id="tabsRow"></div>
+          <button class="tab-add" id="addListBtn" title="Nova rang lista">+</button>
+          <div class="list-tools">
+            <button id="renameListBtn" title="Preimenuj listu">✎</button>
+            <button id="deleteListBtn" title="Obriši listu">✕</button>
+          </div>
+        </div>
 
-      <div class="manga-list" id="mangaList"></div>
-      <div class="empty" id="emptyState" style="display:none;">
-        <b>Lista je prazna</b>
-        Dodaj svoju prvu mangu u ovu rang listu.
+        <div class="controls">
+          <input type="text" id="searchInput" placeholder="Pretraži naslov...">
+          <select id="genreFilter"><option value="">Svi žanrovi</option></select>
+          <select id="statusFilter">
+            <option value="">Svi statusi</option>
+            <option>Čitam</option>
+            <option>Pauzirano</option>
+            <option>Završeno</option>
+            <option>Planiram</option>
+            <option>Odustao</option>
+          </select>
+          <button class="btn" id="addBtn">+ Dodaj mangu</button>
+        </div>
+        <div class="drag-hint" id="dragHint">Prevlačenje redosleda je onemogućeno dok je aktivan filter ili pretraga — ukloni ih da promeniš rang.</div>
+
+        <div class="manga-list" id="mangaList"></div>
+        <div class="empty" id="emptyState" style="display:none;">
+          <b>Lista je prazna</b>
+          Dodaj svoju prvu mangu u ovu rang listu.
+        </div>
       </div>
     </div>
   </div>
@@ -394,9 +422,9 @@ function defaultState(){
       id: listId,
       name: 'Top svih vremena',
       manga: [
-        {id:uid(), title:'Kingdom', genre:'Seinen', status:'Čitam', chapter:846, total:null, note:''},
-        {id:uid(), title:'Berserk', genre:'Seinen', status:'Čitam', chapter:381, total:null, note:''},
-        {id:uid(), title:'Vagabond', genre:'Seinen', status:'Završeno', chapter:327, total:327, note:''},
+        {id:uid(), title:'One', genre:'Seinen', status:'Čitam', chapter:846, total:null, note:''},
+        {id:uid(), title:'Piece', genre:'Seinen', status:'Čitam', chapter:381, total:null, note:''},
+        {id:uid(), title:'is real!', genre:'Seinen', status:'Završeno', chapter:327, total:327, note:''},
       ]
     }],
     activeListId: listId
@@ -411,7 +439,13 @@ function escapeHtml(str){
 
 /* ---------- STATE HELPERS (svesni read-only režima) ---------- */
 
-function isReadOnly(){ return !!viewingUid; }
+function isReadOnly(){
+  if(!USE_FIREBASE) return false; // lokalni režim je uvek editabilan, jednokorisnički
+  return !!viewingUid || !fbUid;  // gost (bez naloga) ili gledanje tuđe liste = samo za čitanje
+}
+function updateReadOnlyClass(){
+  document.getElementById('appWrap').classList.toggle('read-only-mode', isReadOnly());
+}
 function activeState(){ return viewingUid ? viewedState : ownState; }
 
 function getActiveListId(){
@@ -442,15 +476,21 @@ function activeList(){
   return s.lists.find(l=>l.id===id) || s.lists[0];
 }
 
-/* ---------- AUTH SCREEN ---------- */
+/* ---------- AUTH SCREEN (opciono — pretraživanje radi i bez logina) ---------- */
 
-function showApp(){
-  document.getElementById('authScreen').classList.remove('show');
-  document.getElementById('appWrap').style.display = '';
-}
-function showAuthScreen(){
-  document.getElementById('appWrap').style.display = 'none';
+function openAuthScreen(mode){
+  authMode = mode === 'register' ? 'register' : 'login';
+  const isRegister = authMode === 'register';
+  document.getElementById('authTitle').textContent = isRegister ? 'Napravi nalog' : 'Prijavi se';
+  document.getElementById('authSubmitBtn').textContent = isRegister ? 'Registruj se' : 'Prijavi se';
+  document.getElementById('authToggleBtn').textContent = isRegister ? 'Već imaš nalog? Prijavi se' : 'Nemaš nalog? Registruj se';
+  document.getElementById('authUsernameField').style.display = isRegister ? '' : 'none';
+  document.getElementById('authError').textContent = '';
   document.getElementById('authScreen').classList.add('show');
+  (isRegister ? document.getElementById('authUsername') : document.getElementById('authEmail')).focus();
+}
+function closeAuthScreen(){
+  document.getElementById('authScreen').classList.remove('show');
 }
 
 function authErrorMessage(code){
@@ -512,6 +552,11 @@ function wireAuthScreen(){
   document.getElementById('authPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
 
   document.getElementById('logoutBtn').addEventListener('click', ()=> signOut(fbAuth));
+  document.getElementById('guestLoginBtn').addEventListener('click', ()=> openAuthScreen('login'));
+  document.getElementById('guestRegisterBtn').addEventListener('click', ()=> openAuthScreen('register'));
+  document.getElementById('guestPromptRegisterBtn').addEventListener('click', ()=> openAuthScreen('register'));
+  document.getElementById('authCloseBtn').addEventListener('click', closeAuthScreen);
+  document.getElementById('authScreen').addEventListener('click', e=>{ if(e.target.id==='authScreen') closeAuthScreen(); });
 }
 
 /* ---------- USER DIRECTORY (javna lista korisnika, samo za čitanje) ---------- */
@@ -555,7 +600,7 @@ async function switchToUser(targetUid, username){
     viewedState = null;
     viewingActiveListId = null;
     document.getElementById('viewingBanner').classList.remove('show');
-    document.getElementById('appWrap').classList.remove('read-only-mode');
+    updateReadOnlyClass();
     resetFilters();
     renderUserList();
     render();
@@ -565,8 +610,9 @@ async function switchToUser(targetUid, username){
   viewingUid = targetUid;
   viewingActiveListId = null;
   document.getElementById('viewingName').textContent = username || '';
+  updateBackButtonLabel();
   document.getElementById('viewingBanner').classList.add('show');
-  document.getElementById('appWrap').classList.add('read-only-mode');
+  updateReadOnlyClass();
   resetFilters();
   renderUserList();
 
@@ -576,7 +622,7 @@ async function switchToUser(targetUid, username){
     render();
   }, err=>{
     console.error('Ne mogu da učitam listu tog korisnika:', err);
-    viewedState = { lists: [], activeListId: null };
+    viewedState = { lists: [], activeListId: null, _error: err.code || 'unknown' };
     render();
   });
 }
@@ -587,6 +633,11 @@ function resetFilters(){
   document.getElementById('statusFilter').value = '';
 }
 
+function updateBackButtonLabel(){
+  const btn = document.getElementById('backToMineBtn');
+  btn.textContent = fbUid ? '← Nazad na moje liste' : 'Prijavi se da napraviš svoju';
+}
+
 /* ---------- STORAGE / BOOTSTRAP ---------- */
 
 async function ensureUsernameProfile(user){
@@ -595,7 +646,6 @@ async function ensureUsernameProfile(user){
   if(snap.exists()) return true;
 
   document.getElementById('authScreen').classList.remove('show');
-  document.getElementById('appWrap').style.display = 'none';
   document.getElementById('usernameScreen').classList.add('show');
   document.getElementById('setUsernameInput').focus();
   return false;
@@ -635,11 +685,18 @@ async function onUserSignedIn(user){
   if(!hasProfile) return; // usernameScreen preuzima, poziva onUserSignedIn ponovo posle unosa
 
   fbUid = user.uid;
+  closeAuthScreen();
   document.getElementById('userEmail').textContent = user.email || '';
   document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('guestBadge').style.display = 'none';
   document.getElementById('syncBadge').textContent = 'Firebase sinhronizacija ✓';
   document.getElementById('syncBadge').classList.add('on');
   document.getElementById('syncBadge').classList.remove('off');
+
+  // posle logina uvek vrati prikaz na sopstvene liste
+  if(unsubViewSnapshot){ unsubViewSnapshot(); unsubViewSnapshot = null; }
+  viewingUid = null; viewedState = null; viewingActiveListId = null;
+  document.getElementById('viewingBanner').classList.remove('show');
 
   if(unsubOwnSnapshot) unsubOwnSnapshot();
   const ref = doc(db, 'mangaTrackers', fbUid);
@@ -656,37 +713,34 @@ async function onUserSignedIn(user){
     ownState = defaultState();
   }
   unsubOwnSnapshot = onSnapshot(ref, s=>{
-    if(s.exists() && !viewingUid){
+    if(s.exists()){
       ownState = s.data().state;
-      render();
-    }else if(s.exists()){
-      ownState = s.data().state; // ažuriraj u pozadini i kad gledam tuđu listu
+      if(!viewingUid) render();
     }
   });
 
   wireUserDirectory();
-  showApp();
+  updateReadOnlyClass();
   render();
 }
 
 function onUserSignedOut(){
   fbUid = null;
   ownState = null;
-  viewedState = null;
-  viewingUid = null;
   if(unsubOwnSnapshot){ unsubOwnSnapshot(); unsubOwnSnapshot = null; }
-  if(unsubViewSnapshot){ unsubViewSnapshot(); unsubViewSnapshot = null; }
-  if(unsubUserDirectory){ unsubUserDirectory(); unsubUserDirectory = null; }
   document.getElementById('userBadge').style.display = 'none';
-  document.getElementById('appWrap').classList.remove('read-only-mode');
-  document.getElementById('viewingBanner').classList.remove('show');
-  document.getElementById('syncBadge').textContent = 'Lokalno čuvanje';
+  document.getElementById('guestBadge').style.display = 'flex';
+  document.getElementById('syncBadge').textContent = 'Gost — samo pregled';
   document.getElementById('syncBadge').classList.remove('on');
   document.getElementById('syncBadge').classList.add('off');
   document.getElementById('authEmail').value = '';
   document.getElementById('authPassword').value = '';
   document.getElementById('usernameScreen').classList.remove('show');
-  showAuthScreen();
+  closeAuthScreen();
+  updateBackButtonLabel();
+  updateReadOnlyClass();
+  renderUserList();
+  render();
 }
 
 async function start(){
@@ -696,6 +750,13 @@ async function start(){
     fbAuth = getAuth(fbApp);
     wireAuthScreen();
     wireUsernameScreen();
+
+    // gosti (bez naloga) mogu odmah da pretražuju javni direktorijum korisnika
+    wireUserDirectory();
+    document.getElementById('guestBadge').style.display = 'flex';
+    updateReadOnlyClass();
+    render();
+
     onAuthStateChanged(fbAuth, user=>{
       if(user) onUserSignedIn(user);
       else onUserSignedOut();
@@ -704,6 +765,8 @@ async function start(){
     document.getElementById('authScreen').classList.remove('show');
     document.querySelector('.sidebar').style.display = 'none';
     document.querySelector('.layout').style.gridTemplateColumns = '1fr';
+    document.getElementById('guestBadge').style.display = 'none';
+    document.getElementById('syncBadge').textContent = 'Lokalno čuvanje';
     await loadLocal();
     document.getElementById('appWrap').style.display = '';
     render();
@@ -763,7 +826,7 @@ function renderTabs(){
   row.querySelectorAll('.tab').forEach(btn=>{
     btn.addEventListener('click', ()=> setActiveListId(btn.dataset.list));
   });
-  document.getElementById('deleteListBtn').style.opacity = (!viewingUid && s.lists.length > 1) ? '1' : '.35';
+  document.getElementById('deleteListBtn').style.opacity = (!isReadOnly() && s.lists.length > 1) ? '1' : '.35';
 }
 
 function updateGenreOptions(){
@@ -774,8 +837,9 @@ function updateGenreOptions(){
   sel.value = genres.includes(current) ? current : '';
 }
 
-function updateStats(){
+function updateStats(clear){
   const row = document.getElementById('statsRow');
+  if(clear){ row.innerHTML = ''; return; }
   const list = activeList();
   const total = list.manga.length;
   const counts = {};
@@ -787,7 +851,17 @@ function updateStats(){
 }
 
 function render(){
-  if(!ownState && !viewedState) return;
+  const listPanel = document.getElementById('listPanel');
+  const guestPrompt = document.getElementById('guestPrompt');
+  const s = activeState();
+  if(!s){
+    listPanel.style.display = 'none';
+    guestPrompt.style.display = 'block';
+    updateStats(true);
+    return;
+  }
+  listPanel.style.display = '';
+  guestPrompt.style.display = 'none';
   renderTabs();
   updateGenreOptions();
   updateStats();
@@ -809,7 +883,16 @@ function render(){
 
   if(filtered.length === 0){
     empty.style.display = 'block';
-    empty.querySelector('b').textContent = list.manga.length === 0 ? 'Lista je prazna' : 'Nema rezultata';
+    const errCode = s && s._error;
+    if(errCode){
+      empty.querySelector('b').textContent = 'Ne mogu da učitam ovu listu';
+      empty.lastChild.textContent = errCode === 'permission-denied'
+        ? 'Firestore pravila još ne dozvoljavaju javno čitanje (allow read: if true na mangaTrackers) — proveri da li si objavio (Publish) nova pravila.'
+        : `Greška pri učitavanju (${errCode}). Pogledaj konzolu (F12) za detalje.`;
+    }else{
+      empty.querySelector('b').textContent = list.manga.length === 0 ? 'Lista je prazna' : 'Nema rezultata';
+      empty.lastChild.textContent = list.manga.length === 0 ? 'Dodaj svoju prvu mangu u ovu rang listu.' : '';
+    }
     return;
   }
   empty.style.display = 'none';
@@ -919,7 +1002,10 @@ document.getElementById('deleteListBtn').addEventListener('click', ()=>{
   saveData(); render();
 });
 
-document.getElementById('backToMineBtn').addEventListener('click', ()=> switchToUser(null));
+document.getElementById('backToMineBtn').addEventListener('click', ()=>{
+  if(fbUid) switchToUser(null);
+  else openAuthScreen();
+});
 
 document.getElementById('userSearch').addEventListener('input', e=>{
   userSearchTerm = e.target.value.trim().toLowerCase();
