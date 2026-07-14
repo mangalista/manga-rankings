@@ -46,22 +46,32 @@
     transform: rotate(-14deg); font-family:'Bebas Neue',sans-serif; color:var(--red);
     font-size:12px; text-align:center; line-height:1.05; letter-spacing:.05em;
   }
+  .hero-footer{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    gap:10px; margin-top:18px; padding-top:14px; border-top:1px solid rgba(241,236,224,0.12);
+  }
   .sync-badge{
-    position:absolute; bottom:14px; right:24px; font-size:10px; letter-spacing:.06em;
+    font-size:10px; letter-spacing:.06em;
     text-transform:uppercase; padding:4px 9px; border-radius:20px; border:1px solid rgba(241,236,224,0.3);
-    color:#cfc6b3;
+    color:#cfc6b3; white-space:nowrap;
   }
   .sync-badge.on{border-color:#4caf6d; color:#8fd7a5;}
   .sync-badge.off{border-color:rgba(241,236,224,0.25);}
   .user-badge{
-    position:absolute; bottom:14px; left:24px; display:none; align-items:center; gap:10px;
-    font-size:11px; color:#cfc6b3;
+    display:none; align-items:center; gap:12px;
+    font-size:12px; color:#cfc6b3;
   }
-  .user-badge button{
-    background:none; border:1px solid rgba(241,236,224,0.3); color:var(--paper);
-    border-radius:2px; padding:4px 9px; font-size:10px; cursor:pointer; letter-spacing:.02em;
+  .user-badge #userEmail{font-weight:600; color:var(--paper);}
+  .logout-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(200,32,47,0.14); border:1px solid rgba(200,32,47,0.55); color:#ff9d9d;
+    border-radius:20px; padding:6px 14px 6px 12px; font-size:11px; font-weight:700;
+    letter-spacing:.04em; text-transform:uppercase; cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .user-badge button:hover{border-color:var(--red); color:var(--red);}
+  .logout-btn::before{content:"⏻"; font-size:12px; line-height:1;}
+  .logout-btn:hover{background:var(--red); border-color:var(--red); color:#fff;}
+  .logout-btn:active{transform:scale(.96);}
   .auth-error{color:#ff8a80; font-size:12px; min-height:16px; margin-top:2px;}
   .auth-modal .eyebrow{margin-bottom:2px;}
 
@@ -71,6 +81,7 @@
 
   /* LAYOUT: sidebar + main */
   .layout{display:grid; grid-template-columns:220px 1fr; gap:20px; align-items:start;}
+  .layout > .main-col{min-width:0;}
   @media(max-width:800px){ .layout{grid-template-columns:1fr;} }
 
   .sidebar{
@@ -105,8 +116,8 @@
   .viewing-banner button:hover{border-color:var(--paper);}
 
   /* LIST TABS */
-  .tabs-row{display:flex; align-items:center; gap:8px; margin-bottom:18px;}
-  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; flex:1;}
+  .tabs-row{display:flex; align-items:center; gap:8px; margin-bottom:18px; min-width:0;}
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; flex:1 1 0%; min-width:0;}
   .tab{
     font-family:'Inter',sans-serif; font-weight:700; font-size:13px; white-space:nowrap;
     padding:9px 14px; border-radius:20px; border:1px solid rgba(241,236,224,0.25);
@@ -138,8 +149,21 @@
 
   /* CONTROLS */
   .controls{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;}
-  input, select, textarea{font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); border:none; border-radius:2px; padding:11px 13px; font-size:14px;}
-  input::placeholder{color:#8a8371;}
+  input, select, textarea{
+    font-family:'Inter',sans-serif;
+    background:#ffffff;
+    color:var(--ink);
+    border:1px solid rgba(20,18,16,0.2);
+    border-radius:2px;
+    padding:11px 13px;
+    font-size:14px;
+  }
+  input::placeholder, textarea::placeholder{color:#a39c8c;}
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--red);
+    box-shadow:0 0 0 3px rgba(200,32,47,0.15);
+  }
   .controls input[type=text]{flex:1; min-width:180px;}
   .controls select{min-width:150px;}
   .btn{font-family:'Inter',sans-serif; font-weight:700; background:var(--red); color:#fff; border:none; border-radius:2px; padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:background .15s ease, transform .1s ease;}
@@ -164,7 +188,8 @@
   .rank{font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--ink); text-align:center;}
   .rank span{display:block; font-size:9px; font-family:'Inter',sans-serif; color:#8a8371; letter-spacing:.1em;}
   .info .title-row{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
-  .title{font-weight:800; font-size:16px;}
+  .title{font-weight:800; font-size:16px; color:var(--ink); text-decoration:none; border-bottom:1px dashed transparent;}
+  .title:hover{border-bottom-color:var(--red); color:var(--red-dark);}
   .genre-tag{font-size:10px; text-transform:uppercase; letter-spacing:.08em; background:rgba(20,18,16,0.08); padding:2px 7px; border-radius:2px; color:var(--ink-soft);}
   .note{font-size:12px; color:#6b6455; margin-top:3px; font-style:italic;}
   .right{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
@@ -215,6 +240,19 @@
   </div>
 </div>
 
+<div class="overlay" id="usernameScreen">
+  <div class="modal auth-modal">
+    <div class="eyebrow">Poslednji korak</div>
+    <h2>Izaberi korisničko ime</h2>
+    <div class="sub" style="margin-bottom:14px;">Ovo je ime koje će drugi videti u listi korisnika sa leve strane.</div>
+    <div class="field"><label>Korisničko ime</label><input type="text" id="setUsernameInput" placeholder="npr. milan92"></div>
+    <div class="auth-error" id="setUsernameError"></div>
+    <div class="modal-actions">
+      <button class="btn dark" id="setUsernameBtn" type="button">Sačuvaj i nastavi</button>
+    </div>
+  </div>
+</div>
+
 <div class="wrap" id="appWrap" style="display:none;">
 
   <div class="hero">
@@ -223,10 +261,12 @@
     <h1>Rang liste mangi</h1>
     <div class="sub">Napravi koliko god rang lista želiš, i pogledaj liste drugara sa leve strane — njihove možeš samo da gledaš.</div>
     <div class="stats-row" id="statsRow"></div>
-    <div class="sync-badge off" id="syncBadge">Lokalno čuvanje</div>
-    <div class="user-badge" id="userBadge">
-      <span id="userEmail"></span>
-      <button id="logoutBtn" type="button">Odjavi se</button>
+    <div class="hero-footer">
+      <div class="user-badge" id="userBadge">
+        <span id="userEmail"></span>
+        <button id="logoutBtn" class="logout-btn" type="button">Odjavi se</button>
+      </div>
+      <div class="sync-badge off" id="syncBadge">Lokalno čuvanje</div>
     </div>
   </div>
 
@@ -549,7 +589,51 @@ function resetFilters(){
 
 /* ---------- STORAGE / BOOTSTRAP ---------- */
 
+async function ensureUsernameProfile(user){
+  const ref = doc(db, 'usernames', user.uid);
+  const snap = await getDoc(ref);
+  if(snap.exists()) return true;
+
+  document.getElementById('authScreen').classList.remove('show');
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('usernameScreen').classList.add('show');
+  document.getElementById('setUsernameInput').focus();
+  return false;
+}
+
+function wireUsernameScreen(){
+  const btn = document.getElementById('setUsernameBtn');
+  const input = document.getElementById('setUsernameInput');
+  const errEl = document.getElementById('setUsernameError');
+
+  async function submit(){
+    const name = input.value.trim();
+    errEl.textContent = '';
+    if(!name){ errEl.textContent = 'Unesi korisničko ime.'; return; }
+    btn.disabled = true;
+    try{
+      const q = query(collection(db, 'usernames'), where('username', '==', name));
+      const existing = await getDocs(q);
+      if(!existing.empty){ errEl.textContent = 'Korisničko ime je zauzeto.'; return; }
+      const user = fbAuth.currentUser;
+      await setDoc(doc(db, 'usernames', user.uid), { uid: user.uid, username: name });
+      document.getElementById('usernameScreen').classList.remove('show');
+      input.value = '';
+      await onUserSignedIn(user);
+    }catch(e){
+      errEl.textContent = 'Greška: ' + (e.code || e.message);
+    }finally{
+      btn.disabled = false;
+    }
+  }
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+}
+
 async function onUserSignedIn(user){
+  const hasProfile = await ensureUsernameProfile(user);
+  if(!hasProfile) return; // usernameScreen preuzima, poziva onUserSignedIn ponovo posle unosa
+
   fbUid = user.uid;
   document.getElementById('userEmail').textContent = user.email || '';
   document.getElementById('userBadge').style.display = 'flex';
@@ -601,6 +685,7 @@ function onUserSignedOut(){
   document.getElementById('syncBadge').classList.add('off');
   document.getElementById('authEmail').value = '';
   document.getElementById('authPassword').value = '';
+  document.getElementById('usernameScreen').classList.remove('show');
   showAuthScreen();
 }
 
@@ -610,6 +695,7 @@ async function start(){
     db = getFirestore(fbApp);
     fbAuth = getAuth(fbApp);
     wireAuthScreen();
+    wireUsernameScreen();
     onAuthStateChanged(fbAuth, user=>{
       if(user) onUserSignedIn(user);
       else onUserSignedOut();
@@ -738,7 +824,7 @@ function render(){
       <div class="rank">#${rank}<span>RANK</span></div>
       <div class="info">
         <div class="title-row">
-          <span class="title">${escapeHtml(m.title)}</span>
+          <a class="title" href="https://mangafire.to/browse?keyword=${encodeURIComponent(m.title)}&sort=relevance%3Adesc" target="_blank" rel="noopener noreferrer">${escapeHtml(m.title)}</a>
           ${m.genre ? `<span class="genre-tag">${escapeHtml(m.genre)}</span>` : ''}
         </div>
         ${m.note ? `<div class="note">${escapeHtml(m.note)}</div>` : ''}
