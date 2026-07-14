@@ -178,7 +178,7 @@
   }
   .controls input[type=text]{flex:1; min-width:180px;}
   .controls select{min-width:150px;}
-  .btn{font-family:'Inter',sans-serif; font-weight:700; background:var(--red); color:#fff; border:none; border-radius:2px; padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:back[...]
+  .btn{font-family:'Inter',sans-serif; font-weight:700; background:var(--red); color:#fff; border:none; border-radius:2px; padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:background .15s ease, transform .1s ease;}
   .btn:hover{background:var(--red-dark);}
   .btn:active{transform:scale(.97);}
   .btn.ghost{background:transparent; border:1px solid rgba(241,236,224,0.3); color:var(--paper);}
@@ -190,7 +190,7 @@
 
   /* LIST */
   .manga-list{display:flex; flex-direction:column; gap:10px;}
-  .card{background:var(--paper); color:var(--ink); border-radius:2px; padding:14px 16px; display:grid; grid-template-columns:52px 1fr auto; gap:14px; align-items:center; border-left:5px solid var[...]
+  .card{background:var(--paper); color:var(--ink); border-radius:2px; padding:14px 16px; display:grid; grid-template-columns:52px 1fr auto; gap:14px; align-items:center; border-left:5px solid var(--gold); cursor:grab;}
   .card.dragging{opacity:.4;}
   .card[data-status="Čitam"]{border-left-color:var(--red);}
   .card[data-status="Završeno"]{border-left-color:#3f7d4f;}
@@ -261,7 +261,6 @@
     <div class="field"><label>Korisničko ime</label><input type="text" id="setUsernameInput" placeholder="npr. milan92"></div>
     <div class="auth-error" id="setUsernameError"></div>
     <div class="modal-actions">
-      <button class="btn ghost" id="setUsernameCancelBtn" type="button">Otkaži</button>
       <button class="btn dark" id="setUsernameBtn" type="button">Sačuvaj i nastavi</button>
     </div>
   </div>
@@ -711,7 +710,6 @@ async function ensureUsernameProfile(user){
 
 function wireUsernameScreen(){
   const btn = document.getElementById('setUsernameBtn');
-  const cancelBtn = document.getElementById('setUsernameCancelBtn');
   const input = document.getElementById('setUsernameInput');
   const errEl = document.getElementById('setUsernameError');
 
@@ -736,7 +734,6 @@ function wireUsernameScreen(){
     }
   }
   btn.addEventListener('click', submit);
-  cancelBtn.addEventListener('click', ()=> signOut(fbAuth));
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
 }
 
@@ -1006,65 +1003,110 @@ function render(){
     btn.addEventListener('click', async e=>{
       const id = e.target.dataset.del;
       const item = activeList().manga.find(x=>x.id===id);
-      if(item && await customConfirm(`Obriši "${escapeHtml(item.title)}"?`)){
-        activeList().manga = activeList().manga.filter(x=>x.id!==id);
-        saveData();
-        render();
+      if(!item) return;
+      const ok = await customConfirm(`Obrisati "${item.title}" sa liste?`, 'Brisanje mange');
+      if(ok){
+        const l = activeList();
+        l.manga = l.manga.filter(x=>x.id!==id);
+        saveData(); render();
       }
     });
   });
 
-  /* drag & drop samo kada nema filtera i u edit modu */
   if(!filtersOn){
     listEl.querySelectorAll('.card').forEach((card, idx)=>{
       card.addEventListener('dragstart', ()=>{ dragSrcIndex = idx; card.classList.add('dragging'); });
       card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); });
-      card.addEventListener('dragover', e=>{ e.preventDefault(); });
+      card.addEventListener('dragover', e=> e.preventDefault());
       card.addEventListener('drop', e=>{
         e.preventDefault();
         if(dragSrcIndex === null || dragSrcIndex === idx) return;
-        const list = activeList().manga;
-        const [item] = list.splice(dragSrcIndex, 1);
-        list.splice(idx, 0, item);
+        const l = activeList();
+        const moved = l.manga.splice(dragSrcIndex, 1)[0];
+        l.manga.splice(idx, 0, moved);
         dragSrcIndex = null;
-        saveData();
-        render();
+        saveData(); render();
       });
     });
   }
 }
 
+/* ---------- LIST MANAGEMENT (samo za sopstvene liste) ---------- */
+
+document.getElementById('addListBtn').addEventListener('click', async ()=>{
+  if(isReadOnly()) return;
+  const name = await customPrompt('Naziv nove rang liste (npr. "Top Romance"):', '', 'Nova rang lista');
+  if(!name || !name.trim()) return;
+  const newList = { id: uid(), name: name.trim(), manga: [] };
+  ownState.lists.push(newList);
+  ownState.activeListId = newList.id;
+  saveData(); render();
+});
+
+document.getElementById('renameListBtn').addEventListener('click', async ()=>{
+  if(isReadOnly()) return;
+  const list = activeList();
+  const name = await customPrompt('Novi naziv rang liste:', list.name, 'Preimenuj listu');
+  if(!name || !name.trim()) return;
+  list.name = name.trim();
+  saveData(); render();
+});
+
+document.getElementById('deleteListBtn').addEventListener('click', async ()=>{
+  if(isReadOnly() || ownState.lists.length <= 1) return;
+  const list = activeList();
+  const ok = await customConfirm(`Obrisati celu rang listu "${list.name}" i sve mange u njoj?`, 'Brisanje rang liste');
+  if(!ok) return;
+  ownState.lists = ownState.lists.filter(l=>l.id!==list.id);
+  ownState.activeListId = ownState.lists[0].id;
+  saveData(); render();
+});
+
+document.getElementById('backToMineBtn').addEventListener('click', ()=>{
+  if(fbUid) switchToUser(null);
+  else openAuthScreen();
+});
+
+document.getElementById('userSearch').addEventListener('input', e=>{
+  userSearchTerm = e.target.value.trim().toLowerCase();
+  renderUserList();
+});
+
+/* ---------- MANGA MODAL ---------- */
+
 function openModal(id){
-  editingId = id;
-  if(id){
-    const item = activeList().manga.find(x=>x.id===id);
-    if(!item) return;
-    document.getElementById('modalTitle').textContent = 'Izmeni mangu';
-    document.getElementById('fTitle').value = item.title;
-    document.getElementById('fGenre').value = item.genre;
-    document.getElementById('fStatus').value = item.status;
-    document.getElementById('fChapter').value = item.chapter;
-    document.getElementById('fTotal').value = item.total || '';
-    document.getElementById('fNote').value = item.note;
+  if(isReadOnly()) return;
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = editingId ? 'Izmeni mangu' : 'Dodaj mangu';
+  if(editingId){
+    const m = activeList().manga.find(x=>x.id===editingId);
+    document.getElementById('fTitle').value = m.title;
+    document.getElementById('fGenre').value = m.genre || '';
+    document.getElementById('fStatus').value = m.status;
+    document.getElementById('fChapter').value = m.chapter;
+    document.getElementById('fTotal').value = m.total || '';
+    document.getElementById('fNote').value = m.note || '';
   }else{
-    document.getElementById('modalTitle').textContent = 'Dodaj mangu';
     document.getElementById('fTitle').value = '';
     document.getElementById('fGenre').value = '';
     document.getElementById('fStatus').value = 'Čitam';
-    document.getElementById('fChapter').value = '0';
+    document.getElementById('fChapter').value = 0;
     document.getElementById('fTotal').value = '';
     document.getElementById('fNote').value = '';
   }
   document.getElementById('overlay').classList.add('show');
   document.getElementById('fTitle').focus();
 }
-function closeModal(){
-  editingId = null;
-  document.getElementById('overlay').classList.remove('show');
-}
-function saveModal(){
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); editingId = null; }
+
+document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  if(isReadOnly()) return;
   const title = document.getElementById('fTitle').value.trim();
-  if(!title){ alert('Unesi naziv mangi.'); return; }
+  if(!title){ await customAlert('Unesi naziv mange.', 'Nedostaje naziv'); return; }
   const data = {
     title,
     genre: document.getElementById('fGenre').value.trim(),
@@ -1073,61 +1115,23 @@ function saveModal(){
     total: document.getElementById('fTotal').value ? parseFloat(document.getElementById('fTotal').value) : null,
     note: document.getElementById('fNote').value.trim(),
   };
+  const list = activeList();
   if(editingId){
-    const item = activeList().manga.find(x=>x.id===editingId);
-    if(item) Object.assign(item, data);
+    Object.assign(list.manga.find(x=>x.id===editingId), data);
   }else{
-    activeList().manga.push({ id: uid(), ...data });
+    list.manga.unshift({id: uid(), ...data});
   }
   saveData();
-  render();
   closeModal();
-}
-document.getElementById('saveBtn').addEventListener('click', saveModal);
-document.getElementById('cancelBtn').addEventListener('click', closeModal);
-document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
-document.getElementById('fTitle').addEventListener('keydown', e=>{ if(e.key==='Enter') saveModal(); });
+  render();
+});
 
-document.getElementById('addBtn').addEventListener('click', ()=> openModal(null));
-document.getElementById('addListBtn').addEventListener('click', async ()=>{
-  const name = await customPrompt('Ime nove rang liste:', 'Moja nova lista');
-  if(name){
-    const listId = uid();
-    activeState().lists.push({id: listId, name, manga: []});
-    activeState().activeListId = listId;
-    saveData();
-    render();
-  }
+['searchInput','genreFilter','statusFilter'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', render);
+  document.getElementById(id).addEventListener('change', render);
 });
-document.getElementById('renameListBtn').addEventListener('click', async ()=>{
-  const list = activeList();
-  const newName = await customPrompt('Novo ime liste:', list.name);
-  if(newName && newName !== list.name){
-    list.name = newName;
-    saveData();
-    render();
-  }
-});
-document.getElementById('deleteListBtn').addEventListener('click', async ()=>{
-  const list = activeList();
-  if(activeState().lists.length > 1 && await customConfirm(`Obriši rang listu "${escapeHtml(list.name)}"?`)){
-    activeState().lists = activeState().lists.filter(l=>l.id!==list.id);
-    activeState().activeListId = activeState().lists[0].id;
-    saveData();
-    render();
-  }
-});
-document.getElementById('backToMineBtn').addEventListener('click', ()=> switchToUser(null, null));
-document.getElementById('userSearch').addEventListener('input', e=>{
-  userSearchTerm = e.target.value.trim().toLowerCase();
-  renderUserList();
-});
-document.getElementById('searchInput').addEventListener('input', render);
-document.getElementById('genreFilter').addEventListener('change', render);
-document.getElementById('statusFilter').addEventListener('change', render);
 
 start();
 </script>
-
 </body>
 </html>
