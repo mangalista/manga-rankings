@@ -368,6 +368,20 @@
   </div>
 </div>
 
+<div class="overlay" id="dialogOverlay">
+  <div class="modal">
+    <h2 id="dialogTitle">Potvrda</h2>
+    <div id="dialogMessage" style="font-size:14px; color:var(--ink-soft); margin-bottom:14px; line-height:1.4;"></div>
+    <div class="field" id="dialogInputField" style="display:none;">
+      <input type="text" id="dialogInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="dialogCancelBtn" type="button">Otkaži</button>
+      <button class="btn dark" id="dialogOkBtn" type="button">Potvrdi</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 /* ============================================================
    FIREBASE (modularni Web SDK, v10) — učitan direktno preko
@@ -422,9 +436,9 @@ function defaultState(){
       id: listId,
       name: 'Top svih vremena',
       manga: [
-        {id:uid(), title:'One', genre:'Seinen', status:'Čitam', chapter:846, total:null, note:''},
-        {id:uid(), title:'Piece', genre:'Seinen', status:'Čitam', chapter:381, total:null, note:''},
-        {id:uid(), title:'is real!', genre:'Seinen', status:'Završeno', chapter:327, total:327, note:''},
+        {id:uid(), title:'Kingdom', genre:'Seinen', status:'Čitam', chapter:846, total:null, note:''},
+        {id:uid(), title:'Berserk', genre:'Seinen', status:'Čitam', chapter:381, total:null, note:''},
+        {id:uid(), title:'Vagabond', genre:'Seinen', status:'Završeno', chapter:327, total:327, note:''},
       ]
     }],
     activeListId: listId
@@ -436,6 +450,49 @@ function escapeHtml(str){
   d.textContent = str ?? '';
   return d.innerHTML;
 }
+
+/* ---------- SOPSTVENI DIJALOZI (zamena za confirm/prompt/alert,
+   da se ne prikazuje "stranica.github.io says" iz browsera) ---------- */
+
+let dialogState = null;
+
+function showDialog({title, message, type='confirm', defaultValue=''}){
+  return new Promise(resolve=>{
+    dialogState = {resolve, type};
+    document.getElementById('dialogTitle').textContent = title;
+    document.getElementById('dialogMessage').textContent = message;
+    const inputField = document.getElementById('dialogInputField');
+    const input = document.getElementById('dialogInput');
+    inputField.style.display = type === 'prompt' ? '' : 'none';
+    if(type === 'prompt') input.value = defaultValue;
+    document.getElementById('dialogCancelBtn').style.display = type === 'alert' ? 'none' : '';
+    document.getElementById('dialogOkBtn').textContent = type === 'alert' ? 'U redu' : (type === 'prompt' ? 'Sačuvaj' : 'Potvrdi');
+    document.getElementById('dialogOverlay').classList.add('show');
+    if(type === 'prompt') setTimeout(()=>input.focus(), 30);
+  });
+}
+function closeDialog(result){
+  document.getElementById('dialogOverlay').classList.remove('show');
+  if(dialogState){ dialogState.resolve(result); dialogState = null; }
+}
+function customConfirm(message, title='Potvrda'){ return showDialog({title, message, type:'confirm'}); }
+function customPrompt(message, defaultValue='', title='Unos'){ return showDialog({title, message, type:'prompt', defaultValue}); }
+function customAlert(message, title='Obaveštenje'){ return showDialog({title, message, type:'alert'}); }
+
+document.getElementById('dialogOkBtn').addEventListener('click', ()=>{
+  if(!dialogState) return;
+  if(dialogState.type === 'prompt'){
+    const val = document.getElementById('dialogInput').value.trim();
+    closeDialog(val || null);
+  }else{
+    closeDialog(true);
+  }
+});
+document.getElementById('dialogCancelBtn').addEventListener('click', ()=>{
+  if(!dialogState) return;
+  closeDialog(dialogState.type === 'prompt' ? null : false);
+});
+document.getElementById('dialogInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('dialogOkBtn').click(); });
 
 /* ---------- STATE HELPERS (svesni read-only režima) ---------- */
 
@@ -943,10 +1000,12 @@ function render(){
     btn.addEventListener('click', e=> openModal(e.target.dataset.edit));
   });
   listEl.querySelectorAll('[data-del]').forEach(btn=>{
-    btn.addEventListener('click', e=>{
+    btn.addEventListener('click', async e=>{
       const id = e.target.dataset.del;
       const item = activeList().manga.find(x=>x.id===id);
-      if(item && confirm(`Obrisati "${item.title}" sa liste?`)){
+      if(!item) return;
+      const ok = await customConfirm(`Obrisati "${item.title}" sa liste?`, 'Brisanje mange');
+      if(ok){
         const l = activeList();
         l.manga = l.manga.filter(x=>x.id!==id);
         saveData(); render();
@@ -974,9 +1033,9 @@ function render(){
 
 /* ---------- LIST MANAGEMENT (samo za sopstvene liste) ---------- */
 
-document.getElementById('addListBtn').addEventListener('click', ()=>{
+document.getElementById('addListBtn').addEventListener('click', async ()=>{
   if(isReadOnly()) return;
-  const name = prompt('Naziv nove rang liste (npr. "Top Romance"):');
+  const name = await customPrompt('Naziv nove rang liste (npr. "Top Romance"):', '', 'Nova rang lista');
   if(!name || !name.trim()) return;
   const newList = { id: uid(), name: name.trim(), manga: [] };
   ownState.lists.push(newList);
@@ -984,19 +1043,20 @@ document.getElementById('addListBtn').addEventListener('click', ()=>{
   saveData(); render();
 });
 
-document.getElementById('renameListBtn').addEventListener('click', ()=>{
+document.getElementById('renameListBtn').addEventListener('click', async ()=>{
   if(isReadOnly()) return;
   const list = activeList();
-  const name = prompt('Novi naziv rang liste:', list.name);
+  const name = await customPrompt('Novi naziv rang liste:', list.name, 'Preimenuj listu');
   if(!name || !name.trim()) return;
   list.name = name.trim();
   saveData(); render();
 });
 
-document.getElementById('deleteListBtn').addEventListener('click', ()=>{
+document.getElementById('deleteListBtn').addEventListener('click', async ()=>{
   if(isReadOnly() || ownState.lists.length <= 1) return;
   const list = activeList();
-  if(!confirm(`Obrisati celu rang listu "${list.name}" i sve mange u njoj?`)) return;
+  const ok = await customConfirm(`Obrisati celu rang listu "${list.name}" i sve mange u njoj?`, 'Brisanje rang liste');
+  if(!ok) return;
   ownState.lists = ownState.lists.filter(l=>l.id!==list.id);
   ownState.activeListId = ownState.lists[0].id;
   saveData(); render();
@@ -1043,10 +1103,10 @@ document.getElementById('addBtn').addEventListener('click', ()=>openModal(null))
 document.getElementById('cancelBtn').addEventListener('click', closeModal);
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
 
-document.getElementById('saveBtn').addEventListener('click', ()=>{
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
   if(isReadOnly()) return;
   const title = document.getElementById('fTitle').value.trim();
-  if(!title){ alert('Unesi naziv mange.'); return; }
+  if(!title){ await customAlert('Unesi naziv mange.', 'Nedostaje naziv'); return; }
   const data = {
     title,
     genre: document.getElementById('fGenre').value.trim(),
