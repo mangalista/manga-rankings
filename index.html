@@ -82,10 +82,12 @@
   .auth-error{color:#ff8a80; font-size:12px; min-height:16px; margin-top:2px;}
   .auth-modal{position:relative;}
   .modal-close{
-    position:absolute; top:14px; right:14px; background:none; border:none;
-    font-size:16px; color:#8a8371; cursor:pointer; line-height:1; padding:4px;
+    position:absolute; top:14px; right:14px; background:rgba(20,18,16,0.06); border:none;
+    width:28px; height:28px; border-radius:50%; font-size:15px; font-weight:700;
+    color:var(--ink); cursor:pointer; line-height:1; padding:0;
+    display:flex; align-items:center; justify-content:center; z-index:5;
   }
-  .modal-close:hover{color:var(--red);}
+  .modal-close:hover{color:#fff; background:var(--red);}
 
   .stats-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
   .stat{background:rgba(241,236,224,0.06); border:1px solid rgba(241,236,224,0.18); padding:8px 14px; border-radius:2px; font-size:12px; color:#d8d0be;}
@@ -96,6 +98,7 @@
   .layout > .main-col{min-width:0;}
   @media(max-width:800px){ .layout{grid-template-columns:1fr;} }
 
+  .sidebar-col{display:flex; flex-direction:column; gap:16px;}
   .sidebar{
     background:rgba(241,236,224,0.05); border:1px solid rgba(241,236,224,0.15);
     padding:16px; border-radius:2px;
@@ -113,6 +116,26 @@
   .user-item .count{font-size:10px; color:#9a927e;}
   .user-item.active .count{color:rgba(255,255,255,0.75);}
   .user-empty{font-size:12px; color:#9a927e; padding:8px 2px;}
+
+  .reco-note{font-size:11px; color:#9a927e; margin-bottom:10px; line-height:1.4;}
+  .sidebar-title-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .sidebar-title-row .sidebar-title{margin-bottom:0;}
+  .reco-refresh{
+    background:none; border:1px solid rgba(241,236,224,0.25); color:var(--paper);
+    border-radius:2px; width:26px; height:26px; cursor:pointer; font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .reco-refresh:hover{border-color:var(--red); color:var(--red);}
+  .reco-refresh.spinning{animation: reco-spin 0.9s linear infinite;}
+  @keyframes reco-spin{ to{ transform:rotate(360deg); } }
+  .reco-list{display:flex; flex-direction:column; gap:4px;}
+  .reco-item{
+    display:flex; align-items:baseline; gap:8px; padding:7px 8px; border-radius:2px;
+    font-size:13px; color:var(--paper); text-decoration:none; border:1px solid transparent;
+  }
+  .reco-item:hover{background:rgba(241,236,224,0.08); border-color:rgba(241,236,224,0.2);}
+  .reco-rank{font-family:'Bebas Neue',sans-serif; color:var(--gold); font-size:14px; min-width:20px;}
+  .reco-genre{display:block; font-size:10px; color:#9a927e;}
 
   .viewing-banner{
     background:rgba(200,32,47,0.14); border:1px solid rgba(200,32,47,0.45);
@@ -181,8 +204,8 @@
   .btn{font-family:'Inter',sans-serif; font-weight:700; background:var(--red); color:#fff; border:none; border-radius:2px; padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:background .15s ease, transform .1s ease;}
   .btn:hover{background:var(--red-dark);}
   .btn:active{transform:scale(.97);}
-  .btn.ghost{background:transparent; border:1px solid rgba(241,236,224,0.3); color:var(--paper);}
-  .btn.ghost:hover{border-color:var(--paper); background:rgba(241,236,224,0.08);}
+  .btn.ghost{background:transparent; border:1px solid rgba(20,18,16,0.28); color:var(--ink);}
+  .btn.ghost:hover{border-color:var(--ink); background:rgba(20,18,16,0.06);}
   .btn.dark{background:var(--ink); color:var(--paper);}
   .btn.dark:hover{background:#2a2620;}
   .drag-hint{font-size:12px; color:#9a927e; margin:-12px 0 16px; display:none;}
@@ -255,6 +278,7 @@
 
 <div class="overlay" id="usernameScreen">
   <div class="modal auth-modal">
+    <button class="modal-close" id="usernameCloseBtn" type="button" aria-label="Zatvori">✕</button>
     <div class="eyebrow">Poslednji korak</div>
     <h2>Izaberi korisničko ime</h2>
     <div class="sub" style="margin-bottom:14px;">Ovo je ime koje će drugi videti u listi korisnika sa leve strane.</div>
@@ -289,10 +313,21 @@
   </div>
 
   <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-title">Korisnici</div>
-      <input type="text" id="userSearch" placeholder="Pretraži korisnika...">
-      <div class="user-list" id="userList"></div>
+    <aside class="sidebar-col">
+      <div class="sidebar" id="userSidebar">
+        <div class="sidebar-title">Korisnici</div>
+        <input type="text" id="userSearch" placeholder="Pretraži korisnika...">
+        <div class="user-list" id="userList"></div>
+      </div>
+
+      <div class="sidebar reco-panel">
+        <div class="sidebar-title-row">
+          <div class="sidebar-title">🤖 AI preporuke</div>
+          <button id="recoRefreshBtn" class="reco-refresh" type="button" title="Osveži preporuke">🔄</button>
+        </div>
+        <div class="reco-note">Generisano pomoću AI-ja na osnovu tvojih listi — klik vodi na Mangafire pretragu.</div>
+        <div class="reco-list" id="recoList"></div>
+      </div>
     </aside>
 
     <div class="main-col">
@@ -345,7 +380,8 @@
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="modal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" id="modalCloseBtn" type="button" aria-label="Zatvori">✕</button>
     <h2 id="modalTitle">Dodaj mangu</h2>
     <div class="field"><label>Naziv</label><input type="text" id="fTitle"></div>
     <div class="two-col">
@@ -369,7 +405,8 @@
 </div>
 
 <div class="overlay" id="dialogOverlay">
-  <div class="modal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" id="dialogCloseBtn" type="button" aria-label="Zatvori">✕</button>
     <h2 id="dialogTitle">Potvrda</h2>
     <div id="dialogMessage" style="font-size:14px; color:var(--ink-soft); margin-bottom:14px; line-height:1.4;"></div>
     <div class="field" id="dialogInputField" style="display:none;">
@@ -451,6 +488,87 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
+/* ---------- AI PREPORUKE (Groq API) ----------
+   NAPOMENA O BEZBEDNOSTI: ovaj ključ je vidljiv svakome ko pogleda
+   izvorni kod stranice (View Page Source) na tvom javnom GitHub Pages
+   sajtu. Prihvatljivo je za lični/hobi projekat sa besplatnim tier-om,
+   ali ako ovo ikad postane ozbiljniji projekat, ključ treba da živi
+   iza servera/proxy-ja, ne u frontend kodu. */
+
+const GROQ_API_KEY = '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';
+const GROQ_MODEL = 'llama-3.1-8b-instant';
+
+function myAllTitles(){
+  if(!ownState) return [];
+  const seen = new Set();
+  const titles = [];
+  ownState.lists.forEach(l => l.manga.forEach(m=>{
+    const key = (m.title || '').trim().toLowerCase();
+    if(key && !seen.has(key)){ seen.add(key); titles.push(m.title.trim()); }
+  }));
+  return titles;
+}
+
+async function fetchAIRecommendations(){
+  const el = document.getElementById('recoList');
+  const btn = document.getElementById('recoRefreshBtn');
+  if(!el) return;
+  if(btn) btn.classList.add('spinning');
+  el.innerHTML = '<div class="user-empty">Smišljam preporuke...</div>';
+
+  const titles = myAllTitles();
+  const prompt = titles.length
+    ? `Ovo su mange koje korisnik već čita ili ih ima na svojim listama: ${titles.join(', ')}. Na osnovu žanra i stila ovih naslova, preporuči 10 DRUGIH manga koje korisnik verovatno NEMA na listi i koje bi mu se mogle svideti. Ne ponavljaj nijedan naslov sa date liste.`
+    : `Preporuči 10 popularnih, kvalitetnih i raznovrsnih manga naslova pogodnih za nekoga ko tek počinje da čita mange.`;
+
+  try{
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.8,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Ti si ekspert za manga preporuke. Odgovaraš ISKLJUČIVO validnim JSON objektom oblika {"items":[{"title":"...", "genre":"...", "reason":"kratko objašnjenje na srpskom, do 8 reči"}]} sa tačno 10 stavki. Bez markdown ograda, bez dodatnog teksta van JSON-a.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if(!res.ok){
+      const errText = await res.text().catch(()=>'');
+      throw new Error(`HTTP ${res.status} ${errText}`);
+    }
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content || '{"items":[]}';
+    const parsed = JSON.parse(raw);
+    renderAIRecoList(Array.isArray(parsed) ? parsed : (parsed.items || []));
+  }catch(e){
+    console.error('AI preporuke nisu uspele:', e);
+    el.innerHTML = `<div class="user-empty">Nije uspelo učitavanje preporuka (${escapeHtml(e.message || 'greška')}). Klikni 🔄 da probaš ponovo.</div>`;
+  }finally{
+    if(btn) btn.classList.remove('spinning');
+  }
+}
+
+function renderAIRecoList(items){
+  const el = document.getElementById('recoList');
+  if(!el) return;
+  if(!Array.isArray(items) || items.length === 0){
+    el.innerHTML = '<div class="user-empty">Nema preporuka trenutno. Probaj 🔄.</div>';
+    return;
+  }
+  el.innerHTML = items.slice(0, 10).map((r, i) => `
+    <a class="reco-item" href="https://mangafire.to/browse?keyword=${encodeURIComponent(r.title || '')}&sort=relevance%3Adesc" target="_blank" rel="noopener noreferrer" title="${escapeHtml(r.reason || '')}">
+      <span class="reco-rank">#${i+1}</span>
+      <span>${escapeHtml(r.title || '')}<span class="reco-genre">${escapeHtml(r.genre || r.reason || '')}</span></span>
+    </a>
+  `).join('');
+}
+
 /* ---------- SOPSTVENI DIJALOZI (zamena za confirm/prompt/alert,
    da se ne prikazuje "stranica.github.io says" iz browsera) ---------- */
 
@@ -489,6 +607,10 @@ document.getElementById('dialogOkBtn').addEventListener('click', ()=>{
   }
 });
 document.getElementById('dialogCancelBtn').addEventListener('click', ()=>{
+  if(!dialogState) return;
+  closeDialog(dialogState.type === 'prompt' ? null : false);
+});
+document.getElementById('dialogCloseBtn').addEventListener('click', ()=>{
   if(!dialogState) return;
   closeDialog(dialogState.type === 'prompt' ? null : false);
 });
@@ -735,6 +857,13 @@ function wireUsernameScreen(){
   }
   btn.addEventListener('click', submit);
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+
+  document.getElementById('usernameCloseBtn').addEventListener('click', ()=>{
+    document.getElementById('usernameScreen').classList.remove('show');
+    input.value = '';
+    errEl.textContent = '';
+    signOut(fbAuth); // nalog bez korisničkog imena ne može da nastavi, pa otkazivanje odjavljuje
+  });
 }
 
 async function onUserSignedIn(user){
@@ -779,6 +908,7 @@ async function onUserSignedIn(user){
   wireUserDirectory();
   updateReadOnlyClass();
   render();
+  fetchAIRecommendations();
 }
 
 function onUserSignedOut(){
@@ -798,6 +928,7 @@ function onUserSignedOut(){
   updateReadOnlyClass();
   renderUserList();
   render();
+  fetchAIRecommendations();
 }
 
 async function start(){
@@ -813,6 +944,7 @@ async function start(){
     document.getElementById('guestBadge').style.display = 'flex';
     updateReadOnlyClass();
     render();
+    fetchAIRecommendations();
 
     onAuthStateChanged(fbAuth, user=>{
       if(user) onUserSignedIn(user);
@@ -820,13 +952,13 @@ async function start(){
     });
   }else{
     document.getElementById('authScreen').classList.remove('show');
-    document.querySelector('.sidebar').style.display = 'none';
-    document.querySelector('.layout').style.gridTemplateColumns = '1fr';
+    document.getElementById('userSidebar').style.display = 'none';
     document.getElementById('guestBadge').style.display = 'none';
     document.getElementById('syncBadge').textContent = 'Lokalno čuvanje';
     await loadLocal();
     document.getElementById('appWrap').style.display = '';
     render();
+    fetchAIRecommendations();
   }
 }
 
@@ -1101,6 +1233,7 @@ function closeModal(){ document.getElementById('overlay').classList.remove('show
 
 document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
 document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
 
 document.getElementById('saveBtn').addEventListener('click', async ()=>{
@@ -1130,6 +1263,8 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   document.getElementById(id).addEventListener('input', render);
   document.getElementById(id).addEventListener('change', render);
 });
+
+document.getElementById('recoRefreshBtn').addEventListener('click', fetchAIRecommendations);
 
 start();
 </script>
