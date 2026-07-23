@@ -419,27 +419,28 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script type="module">
 /* ============================================================
    FIREBASE (modularni Web SDK, v10) — učitan direktno preko
    ES import-a sa gstatic CDN-a, bez potrebe za npm/webpack.
-   Popuni firebaseConfig ispod svojim podacima iz Firebase
-   konzole (Project settings > General > Your apps > SDK setup).
-   Ako ostaviš apiKey prazan, sajt automatski koristi lokalno
-   čuvanje umesto Firebase-a (bez naloga i bez drugih korisnika).
+
+   Podaci (Firebase config, Groq ključ) se NE nalaze ovde u kodu —
+   učitavaju se iz window.APP_CONFIG, koji postavlja config.js
+   (učitan tagom <script> pre ovog modula). Taj fajl:
+   - lokalno: ti ga ručno praviš od config.example.js (i nikad ga
+     ne commit-uješ — nalazi se u .gitignore)
+   - na GitHub Pages: generiše ga GitHub Actions workflow iz
+     repozitorijumskih Secrets-a, u trenutku deploy-a — nikad nije
+     deo git istorije, pa push protection nema šta da uhvati.
    ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCBFXXybyJ-HAUitVK3aKvKDnY98pMIKT4",
-  authDomain: "manga-f9fc1.firebaseapp.com",
-  projectId: "manga-f9fc1",
-  storageBucket: "manga-f9fc1.firebasestorage.app",
-  messagingSenderId: "616131911376",
-  appId: "1:616131911376:web:9f9c22d450d1a6bd7a88d5",
-  measurementId: "G-MPWLHT2STP"
+const APP_CONFIG = window.APP_CONFIG || {};
+const firebaseConfig = APP_CONFIG.firebase || {
+  apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: ""
 };
 
 const USE_FIREBASE = !!firebaseConfig.apiKey;
@@ -489,23 +490,22 @@ function escapeHtml(str){
 }
 
 /* ---------- AI PREPORUKE (Groq API) ----------
-   NAPOMENA O BEZBEDNOSTI: ovaj ključ je vidljiv svakome ko pogleda
-   izvorni kod stranice (View Page Source) na tvom javnom GitHub Pages
-   sajtu. Prihvatljivo je za lični/hobi projekat sa besplatnim tier-om,
-   ali ako ovo ikad postane ozbiljniji projekat, ključ treba da živi
-   iza servera/proxy-ja, ne u frontend kodu. */
+   Ključ i model dolaze iz window.APP_CONFIG.groq (vidi napomenu
+   na vrhu fajla) — ako nedostaje, AI preporuke se jednostavno
+   preskaču bez greške. */
 
-const GROQ_API_KEY = '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';
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_API_KEY = (APP_CONFIG.groq && APP_CONFIG.groq.apiKey) || '';
+const GROQ_MODEL = (APP_CONFIG.groq && APP_CONFIG.groq.model) || 'llama-3.1-8b-instant';
 
 function myAllTitles(){
-  if(!ownState) return [];
+  if(!ownState || !ownState.lists.length) return [];
+  const list = ownState.lists.find(l => l.id === ownState.activeListId) || ownState.lists[0];
   const seen = new Set();
   const titles = [];
-  ownState.lists.forEach(l => l.manga.forEach(m=>{
+  list.manga.forEach(m=>{
     const key = (m.title || '').trim().toLowerCase();
     if(key && !seen.has(key)){ seen.add(key); titles.push(m.title.trim()); }
-  }));
+  });
   return titles;
 }
 
@@ -513,6 +513,10 @@ async function fetchAIRecommendations(){
   const el = document.getElementById('recoList');
   const btn = document.getElementById('recoRefreshBtn');
   if(!el) return;
+  if(!GROQ_API_KEY){
+    el.innerHTML = '<div class="user-empty">AI preporuke nisu podešene (nedostaje Groq ključ u config.js).</div>';
+    return;
+  }
   if(btn) btn.classList.add('spinning');
   el.innerHTML = '<div class="user-empty">Smišljam preporuke...</div>';
 

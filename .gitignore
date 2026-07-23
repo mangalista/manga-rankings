@@ -1,0 +1,3 @@
+# Sadrži prave API ključeve — nikad se ne commit-uje.
+# Napravi ga lokalno kao kopiju config.example.js
+config.js
